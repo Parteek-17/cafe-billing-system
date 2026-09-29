@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-slate-100 text-slate-900 antialiased;
+  }
+
+  /* 16px inputs stop iOS zooming in when a field is focused at the counter. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* The receipt page doubles as the printed bill — this is the "browser print"
+   fallback the architecture calls for. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    @apply bg-white;
+  }
+
+  .print-sheet {
+    box-shadow: none !important;
+    border: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+}
