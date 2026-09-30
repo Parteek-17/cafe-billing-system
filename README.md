@@ -73,11 +73,41 @@ handler under the service-role key, after checking the caller's role.
 | `POST /api/tabs/:id/items` | Add / change / remove a line. Copies name, price and GST onto the line. |
 | `POST /api/tabs/:id/settle` | Recomputes every figure from the database, claims the bill number, marks it settled. |
 | `POST /api/bills/:id/pdf` | Renders the receipt, stores it privately, returns a signed link. |
-| `GET /api/bills/:id/whatsapp-link` | Builds the `wa.me` link from the saved template. |
+| `GET /api/bills/:id/whatsapp-link` | Builds the one-tap `wa.me` link from the saved template. |
 | `POST /api/bills/:id/void` | Owner only, reason required, written to the audit log. |
 | `POST /api/day-close` | Freezes a business date. |
 | `POST /api/reports/register` | Date-range PDF register. |
 | `GET /api/reports/csv` | The same range as a spreadsheet. |
+
+## WhatsApp
+
+The bill screen has a **Send on WhatsApp** button. It generates the receipt
+PDF if it does not exist yet, then opens WhatsApp with the thanks note and a
+private link to the bill already typed. Staff press send.
+
+That is the whole feature. There is no API account, no per-message cost, no
+24-hour session window and no template approval — all of which the WhatsApp
+Business/Cloud API imposes and none of which a café counter needs.
+
+Edit the wording in **Settings → WhatsApp thanks note**. Placeholders:
+
+| Placeholder | Becomes |
+|---|---|
+| `{{customer_name}}` | the name on the bill |
+| `{{cafe_name}}` | your café name |
+| `{{bill_no}}` | e.g. `CAFE/2026-09-30/007` |
+| `{{total}}` | e.g. `Rs. 336.00` |
+| `{{bill_link}}` | signed link to the PDF |
+
+Drop `{{bill_link}}` if you want a plain thanks with no link; the PDF is
+still stored and still reachable from the Bills screen.
+
+The link is a **signed Supabase URL** — unguessable and valid for seven days.
+The `bills` bucket stays private throughout.
+
+All of this lives behind `GET /api/bills/:id/whatsapp-link` and
+`src/lib/whatsapp.ts`. Moving to an automated sender later means changing
+those two files and nothing else.
 
 ## Testing
 

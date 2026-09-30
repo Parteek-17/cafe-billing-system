@@ -2,30 +2,28 @@ import type { NextRequest } from "next/server";
 
 import { HttpError, errorResponse, requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { paiseToPlain } from "@/lib/money";
-import { toWhatsAppNumber } from "@/lib/phone";
+import { SIGNED_URL_TTL_SECONDS } from "@/lib/bill-pdf";
+import { buildWaMeUrl, renderMessage } from "@/lib/whatsapp";
 import type { AppSettings, Order } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 7;
-
 /**
  * GET /api/bills/:id/whatsapp-link
  *
- * Builds https://wa.me/91<phone>?text=<thanks note + bill link> from the saved
- * template. Staff tap once, WhatsApp opens with the message already typed.
+ * Builds https://wa.me/91<phone>?text=<thanks note + bill link> from the
+ * saved template. Staff tap once, WhatsApp opens with the message already
+ * typed, they hit send.
  *
- * All WhatsApp logic lives here, so moving to the Cloud API later changes one
- * file.
+ * All WhatsApp logic sits behind this one endpoint, so moving to an API
+ * sender later changes this file and src/lib/whatsapp.ts, nothing else.
  */
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    // Next 15+ delivers route params as a Promise.
     const { id: billId } = await params;
     const { userId, profile } = await requireUser();
     const admin = createAdminClient();
@@ -68,17 +66,11 @@ export async function GET(
       billLink = signed?.signedUrl ?? "";
     }
 
-    const message = settings.whatsapp_template
-      .replaceAll("{{customer_name}}", order.customer_name ?? "there")
-      .replaceAll("{{cafe_name}}", settings.cafe_name)
-      .replaceAll("{{bill_no}}", order.bill_no ?? "")
-      .replaceAll("{{total}}", `Rs. ${paiseToPlain(order.total_paise)}`)
-      .replaceAll("{{bill_link}}", billLink)
-      .trim();
-
-    const url = `https://wa.me/${toWhatsAppNumber(order.customer_phone)}?text=${encodeURIComponent(message)}`;
-
-    return Response.json({ url, message, has_pdf: Boolean(billLink) });
+    return Response.json({
+      url: buildWaMeUrl(order, settings, billLink),
+      message: renderMessage(order, settings, billLink),
+      has_pdf: Boolean(billLink),
+    });
   } catch (err) {
     return errorResponse(err);
   }

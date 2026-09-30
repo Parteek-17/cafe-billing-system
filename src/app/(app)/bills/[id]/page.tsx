@@ -87,18 +87,27 @@ export default function BillPage() {
     }
   }
 
+  /**
+   * One tap: make sure the receipt exists so the message carries a working
+   * link, then open WhatsApp with the thanks note already typed. Staff press
+   * send.
+   */
   async function sendWhatsApp() {
     setBusy("whatsapp");
     setActionError(null);
+
     try {
-      // Make sure a PDF exists first, so the message carries a real link.
-      if (!order?.pdf_path && !pdfUrl) {
-        await postJson(`/api/bills/${billId}/pdf`);
-      }
-      const { url } = await getJson<{ url: string }>(`/api/bills/${billId}/whatsapp-link`);
+      // Cheap on repeat — the PDF is only rendered the first time.
+      await postJson(`/api/bills/${billId}/pdf`);
+
+      const { url } = await getJson<{ url: string }>(
+        `/api/bills/${billId}/whatsapp-link`,
+      );
       window.open(url, "_blank", "noopener");
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Could not build the WhatsApp message.");
+      setActionError(
+        err instanceof Error ? err.message : "Could not build the WhatsApp message.",
+      );
     } finally {
       setBusy(null);
     }
